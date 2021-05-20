@@ -1,26 +1,25 @@
+import React from "react";
 import { BrowserRouter as Router, Route } from "react-router-dom";
 import "./App.css";
 import JobDetail from "./Components/JobDetail";
 import NavBar from "./Components/NavBar";
-import React, { useState, useEffect } from "react";
-function App() {
-  const [currentJob, setCurrentJob] = useState({});
-  const selectJob = (data) => {
-    setCurrentJob(data);
-    console.log(data);
-  };
+import { connect } from "react-redux";
+const mapStateToProps = (state) => state;
+function App(props) {
+  const selectedJob = props.selectedJob;
+
   return (
     <div className="App">
       <Router>
         <Route path="/">
-          <NavBar selectJob={selectJob} />
+          <NavBar />
         </Route>
         <Route exact path="/job-search/:id">
-          <JobDetail currentJob={currentJob} />
+          <JobDetail selectedJob={selectedJob} />
         </Route>
       </Router>
     </div>
   );
 }
 
-export default App;
+export default connect(mapStateToProps)(App);

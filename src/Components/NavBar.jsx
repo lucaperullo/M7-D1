@@ -12,8 +12,10 @@ import Fab from "@material-ui/core/Fab";
 import KeyboardArrowUpIcon from "@material-ui/icons/KeyboardArrowUp";
 import Zoom from "@material-ui/core/Zoom";
 import Button from "@material-ui/core/Button";
-import PageviewTwoToneIcon from "@material-ui/icons/PageviewTwoTone";
+import ScaleLoader from "react-spinners/ScaleLoader";
 import Results from "./Results";
+import { connect } from "react-redux";
+import MyLoader from "./Skeleton";
 
 const useStyles = makeStyles((theme) => ({
   root: {
@@ -109,31 +111,71 @@ ScrollTop.propTypes = {
    */
   window: PropTypes.func,
 };
-
-export default function NavBar(props) {
+const mapStateToProps = (state) => state;
+const mapDispatchToProps = (dispatch) => ({
+  storeSearchResults: (searchResults) =>
+    dispatch({ type: "STORE_SEARCH_RESULTS", payload: searchResults }),
+  storeRecentSearch: (searchTerm) =>
+    dispatch({ type: "ADD_RECENT_SEARCH", payload: searchTerm }),
+  setError: (error) => dispatch({ type: "SET_ERROR", payload: error }),
+  showErrors: (boolean) =>
+    dispatch({ type: "DISPLAY_ERRORS", payload: boolean }),
+});
+function NavBar(props) {
   const classes = useStyles();
-  const [position, setPosition] = useState("");
-  const [location, setLocation] = useState("");
+  const [searchInput, setSearchInput] = useState({
+    location: "",
+    position: "",
+  });
+  const [isLoading, setIsLoading] = useState(false);
   const [jobs, setJobs] = useState([]);
   const searchApi = async (e) => {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+    }
+    setIsLoading(true);
+    try {
+      console.log("hitted");
+      // const res = await fetch(
+      //   "https://spotify-fetch.herokuapp.com/https://jobs.github.com/positions?description=&location="
+      // );
+      const res = await fetch(
+        `https://spotify-fetch.herokuapp.com/https://jobs.github.com/positions.json?description=${
+          searchInput.position && searchInput.position.length > 0
+            ? searchInput.position
+            : ""
+        }${
+          "&location" + searchInput.location && searchInput.location.length > 0
+            ? "location=" + searchInput.location
+            : ""
+        }`
+      );
 
-    const res = await fetch(
-      `https://jobs.github.com/positions.json?description=${position}&${
-        location !== "" && "location=" + location
-      }`
-    );
-    const data = await res.json();
-    setJobs(data);
-    console.log(jobs);
+      console.log("hitted part 2");
+      const data = await res.json();
+      if (data) {
+        setTimeout(() => {
+          props.storeSearchResults(data);
+          setIsLoading(false);
+        }, 500);
+      } else {
+        props.setError(data);
+        props.showErrors(true);
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.log(error);
+    }
   };
+
+  React.useEffect(() => searchApi(), []);
   return (
     <React.Fragment>
       <CssBaseline />
       <AppBar>
         <Toolbar>
           <Typography onClick={() => window.location.assign("/")} variant="h6">
-            JOBS FINDER
+            DEVJOBS FINDER
           </Typography>
           <div
             style={{ width: "100%", display: "flex", justifyContent: "center" }}
@@ -144,7 +186,12 @@ export default function NavBar(props) {
               </div>
               <form onSubmit={searchApi}>
                 <InputBase
-                  onChange={(event) => setPosition(event.target.value)}
+                  onChange={(event) =>
+                    setSearchInput({
+                      ...searchInput,
+                      position: event.target.value,
+                    })
+                  }
                   placeholder="job type"
                   classes={{
                     root: classes.inputRoot,
@@ -153,7 +200,12 @@ export default function NavBar(props) {
                   inputProps={{ "aria-label": "search" }}
                 />
                 <InputBase
-                  onChange={(event) => setLocation(event.target.value)}
+                  onChange={(event) =>
+                    setSearchInput({
+                      ...searchInput,
+                      location: event.target.value,
+                    })
+                  }
                   placeholder="location"
                   classes={{
                     root: classes.inputRoot,
@@ -162,13 +214,8 @@ export default function NavBar(props) {
                   inputProps={{ "aria-label": "search" }}
                 />
 
-                <Button
-                  type="submit"
-                  variant="contained"
-                  color="secondary"
-                  startIcon={<PageviewTwoToneIcon />}
-                >
-                  Find
+                <Button type="submit" variant="contained" color="secondary">
+                  {isLoading ? <ScaleLoader height={11} width={1} /> : "Find"}
                 </Button>
               </form>
             </div>
@@ -176,7 +223,31 @@ export default function NavBar(props) {
         </Toolbar>
       </AppBar>
       <Toolbar id="back-to-top-anchor" />
-      <Results results={jobs} selectJob={props.selectJob} />
+
+      {isLoading === false ? (
+        <Results
+          results={props.searchResults}
+          selectedJob={props.selectedJob}
+        />
+      ) : (
+        <MyLoader />
+      )}
+      {/* {isLoading && (
+        <div
+          style={{
+            marginTop: "300px",
+            width: "100%",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+          }}
+        >
+          <div>
+            <span className="font-weight-bold">Loading search results...</span>
+            <LinearProgress color="secondary" />
+          </div>
+        </div>
+      )} */}
       <ScrollTop {...props}>
         <Fab color="secondary" size="small" aria-label="scroll back to top">
           <KeyboardArrowUpIcon />
@@ -185,3 +256,4 @@ export default function NavBar(props) {
     </React.Fragment>
   );
 }
+export default connect(mapStateToProps, mapDispatchToProps)(NavBar);
